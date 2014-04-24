@@ -57,7 +57,6 @@ dt <- merge(dt, dtFeatures[, list(num, name)], by="num", all.x=TRUE)
 dt$activityN <- factor(dt$activity)
 dt$feature <- factor(dt$name.y)
 
-## Features with 2 categories
 n <- 2
 y <- matrix(seq(1, n), nrow=n)
 x <- matrix(c(grepl("^t", dt$feature), grepl("^f", dt$feature)), ncol=nrow(y))
@@ -69,11 +68,9 @@ dt$featAcceleration <- factor(x %*% y, labels=c(NA, "Body", "Gravity"))
 x <- matrix(c(grepl("mean()", dt$feature), grepl("std()", dt$feature)), ncol=nrow(y))
 dt$featVariable <- factor(x %*% y, labels=c("Mean", "SD"))
 
-## Features with 1 category
 dt$featJerk <- factor(grepl("Jerk", dt$feature), labels=c(NA, "Jerk"))
 dt$featMagnitude <- factor(grepl("Mag", dt$feature), labels=c(NA, "Magnitude"))
 
-## Features with 3 categories
 n <- 3
 y <- matrix(seq(1, n), nrow=n)
 x <- matrix(c(grepl("-X", dt$feature), grepl("-Y", dt$feature), grepl("-Z", dt$feature)), ncol=nrow(y))
