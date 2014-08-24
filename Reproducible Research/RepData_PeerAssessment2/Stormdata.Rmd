@@ -1,0 +1,110 @@
+Title: Health and Economic Impact of NOAA Storm  
+========================================================
+
+## Synopsis
+  The basic goal of this article is to analyse the NOAA Storm Database and show impacts of NOAA storm on health and economics. The article shows the most harmful weather events that cause major impact to population health. The second phases shows the most harmful weather events that cause major economic damage.
+  After the analysis, we could conclude that **tornado** caused the most damage to population health whereas **Flood** lead to major economic consequences.
+
+
+## Loading Data
+  The data is downloaded from [here]("https://d396qusza40orc.cloudfront.net/repdata%2Fdata%2FStormData.csv.bz2"), with documentation on how most of the variables were constructed and defined available [here]("https://d396qusza40orc.cloudfront.net/repdata%2Fpeer2_doc%2Fpd01016005curr.pdf"). The downloaded file of comma seperated format is zipped in bz2 format.
+  
+```{r load}
+unzipped <- bunzip2("repdata_data_StormData.csv.bz2", destname = "repdata_data_StormData.csv", overwrite = TRUE)
+f <- file(file.path(getwd(), "repdata_data_StormData.csv"))
+dt <- data.frame(read.csv(f, header =TRUE))
+```
+
+Total Number of data entries loaded into the data frame.
+``` {r total_entries, echo=FALSE}
+dim(dt)[1]
+```
+
+
+## Preparing data
+  Here, the data prepared for the analysis. Health_impact and Economic_impact are created to store the data for the analysis. By this, we dont need to use whole dataset but only the columns needed. Also, exponent are adjusted so the values and exponents are not individual but together.
+  
+``` {r prepare}
+health_impact <- data.frame(EVTYPE = dt$EVTYPE, FATALITIES = dt$FATALITIES, INJURIES = dt$INJURIES)
+
+economic_impact <- data.frame(EVTYPE = dt$EVTYPE, CROP.DAMAGE = dt$CROPDMG, PROPERTY.DAMAGE = dt$PROPDMG)
+
+property <- rep(0, times = dim(dt)[1])
+crop <- rep(0, times = dim(dt)[1])
+
+property[dt$PROPDMGEXP == "K" | dt$PROPDMGEXP == "k"] <- 1000
+crop[dt$CROPDMGEXP == "K" | dt$CROPDMGEXP == "k"] <- 1000
+
+property[dt$PROPDMGEXP == "M" | dt$PROPDMGEXP == "m"] <- 1e+06
+crop[dt$CROPDMGEXP == "M" | dt$CROPDMGEXP == "m"] <- 1e+06
+
+property[dt$PROPDMGEXP == "B" | dt$PROPDMGEXP == "b"] <- 1e+09
+crop[dt$CROPDMGEXP == "B" | dt$CROPDMGEXP == "b"] <- 1e+09
+
+for (i in as.character(0:9)) {
+    property[dt$PROPDMGEXP == i] <- 10 ^ as.numeric(i)
+    crop[dt$CROPDMGEXP == i] <- 10 ^ as.numeric(i)
+}
+
+economic_impact$CROP.DAMAGE <- dt$CROPDMG * crop
+economic_impact$PROPERTY.DAMAGE <- dt$PROPDMG * property
+
+
+```
+
+## Result
+  Analysis showing health and economic impacts of different weather events.
+### Health Impact
+  To determine which types of events are most harmful with respect to population health, we need to find the total number of fatalities and injuries by each type of event. This is done first for fatalities, then for injuries. 
+  
+``` {r health.impact}
+health_impact <- health_impact[health_impact$FATALITIES > 0 | health_impact$INJURIES > 0, ]
+
+fatalities <- aggregate(health_impact$FATALITIES, by = list(evtype = health_impact$EVTYPE), sum, na.rm = TRUE)
+injuries <- aggregate(health_impact$INJURIES, by = list(evtype = health_impact$EVTYPE), sum, na.rm = TRUE)
+
+# Ordering weather events causing fatalities
+order_fatalities_x <- order(fatalities$x, decreasing=TRUE)
+fatalities <- fatalities[order_fatalities_x,]
+
+# Ordering weather events causing injuries
+order_injuries_x <- order(injuries$x, decreasing=TRUE)
+injuries <- injuries[order_injuries_x, ]
+```
+
+The health impacts of each weather event type are shown in decresing order of their magnitude and the top 6 results are plotted here.
+
+``` {r health_impact_plot ,fig.width=10, fig.height=16}
+par(mfrow=c(2,1))
+head(fatalities)
+fplot <- barplot(fatalities[1:6,]$x, main = "Weather Events causing Most Fatalities", xlab = "Weather Event", ylab = "Number of fatalities persons", col = "blue", ylim = range(fatalities$x))
+axis(1, at = fplot, lab = fatalities$evtype[1:6], cex.axis = 0.7)
+
+head(injuries)
+iplot <- barplot(injuries[1:6,]$x, main = "Weather Events causing Most Injuries", xlab = "Weather Event", ylab = "Number of injured persons", col = "red", ylim = range(injuries$x))
+axis(1, at = iplot, lab = injuries$evtype[1:6], cex.axis = 0.7)
+```
+
+
+### Economic Damage
+
+  To determine which types of events have the greatest economic consequences, we calculate the aggregate damage (in US dollars) caused to both property and crops by each event type. This is performed by the following code:
+
+```{r economic.damage}
+economic_impact$TOTAL.DAMAGE <- economic_impact$CROP.DAMAGE + economic_impact$PROPERTY.DAMAGE
+
+economic <- aggregate(economic_impact$TOTAL.DAMAGE, by = list(evtype = economic_impact$EVTYPE), sum, na.rm = TRUE)
+
+# Ordering weather events causing fatalities
+order_economic_x <- order(economic$x, decreasing=TRUE)
+economic <- economic[order_economic_x,]
+economic$x <- economic$x/1e+06
+```
+
+The economic impacts of each weather event type are shown in decreasing order of their magnitude and the top 6 results are plotted below.
+
+```{r health_impact_plot, fig.width=10, fig.height=10}
+head(economic)
+eplot <- barplot(economic[1:6,]$x, main = "Weather Events causing Monetary Damage", xlab = "Weather Event", ylab = "Damage in US Dollars (millions)", col = "blue", ylim = range(economic$x))
+axis(1, at = eplot, lab = economic$evtype[1:6], cex.axis = 0.7)
+```
